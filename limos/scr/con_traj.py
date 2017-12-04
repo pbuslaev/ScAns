@@ -5,9 +5,12 @@ import sys
 import os
 
 
-def load_traj(traj_file, traj_top, lipid_resname, max_frames = None):
-	print('Loading trajctory..')
-	traj = md.load(traj_file, top = traj_top)
+def load_traj(traj_file, traj_top, lipid_resname, stride, sf, max_frames = None):
+	print('Loading trajectory..')
+	if sf == None:
+		traj = md.load(traj_file, top = traj_top, stride = stride)
+	else:
+		traj = md.load(traj_file, top = traj_top, stride = stride)[sf:]
 	print('Removing solvent..')
 	if lipid_resname == None:
 		traj = traj.atom_slice(traj.topology.select('not water and not type W H Hs'))
@@ -28,9 +31,9 @@ def average_structure(traj):
 	return avg_traj
 
 
-def main(file_1, file_2, file_3 = None, lipid_resname = None):
+def main(file_1, file_2, stride, sf, out_traj, out_top, file_3 = None, lipid_resname = None):
 	PATH = os.getcwd() + '/'
-	traj = load_traj(PATH + file_1, PATH + file_2, lipid_resname = lipid_resname)
+	traj = load_traj(PATH + file_1, PATH + file_2, lipid_resname = lipid_resname, stride = stride, sf = sf)
 	N = traj[0].n_residues
 	#lipids = [(traj,i)  for i in range(N)]
 	#with Pool(2) as p:
@@ -48,28 +51,53 @@ def main(file_1, file_2, file_3 = None, lipid_resname = None):
 		ref_traj = traj[0]
 		print('The trajectory was aligned, reference = first frame.')
 	traj = traj.superpose(ref_traj)
-	traj.save_xtc(PATH + 'concatenated.xtc')
-	print('Concatenated trajectory was created, saved in "concatenated.xtc"')
+	if out_traj == None:
+		traj.save(PATH + 'concatenated.xtc')
+		print('Concatenated trajectory was created, saved in "concatenated.xtc"')
+	else:
+		traj.save(PATH + out_traj)
+		print('Concatenated trajectory was created, saved in "%s"' % out_traj)
 	avg_str = average_structure(traj)
-	avg_str.save('average.pdb')
-	print('Average structure saved in "average.pdb"')
-	return 'concatenated.xtc', 'average.pdb'
+	if out_top == None:
+		avg_str.save('average.pdb')
+		print('Average structure saved in "average.pdb"')
+	else:
+		avg_str.save(out_top)
+		print('Average structure saved in "%s"' % out_top)
+	return
 
 
 if __name__ == '__main__':
 	args = sys.argv[1:]
+	if '-stride' in args:
+		stride = int(args[args.index('-stride') + 1])
+	else:
+		stride = None
+	if '-sf' in args:
+		sf = int(args[args.index('-sf') + 1])
+	else:
+		sf = None
+	if '-oc' in args:
+		out_traj = args[args.index('-oc') + 1]
+	else:
+		out_traj = None
+	if '-oa' in args:
+		out_top = args[args.index('-oa') + 1]
+	else:
+		out_top = None
 	if '-f' in args and '-t' in args and '-r' in args and '-l' in args:
-		main(args[args.index('-f') + 1], args[args.index('-t') + 1], args[args.index('-r') + 1], args[args.index('-l') + 1])
+		main(args[args.index('-f') + 1], args[args.index('-t') + 1], args[args.index('-r') + 1], args[args.index('-l') + 1], stride = stride, sf = sf, out_traj = out_traj, out_top = out_top)
 	elif '-f' in args and '-t' in args and '-r' not in args:
 		print('No reference file supplied. The first frame of trajectory will be used for alignment.')
-		main(args[args.index('-f') + 1], args[args.index('-t') + 1])
+		main(args[args.index('-f') + 1], args[args.index('-t') + 1], stride = stride, sf = sf, out_traj = out_traj, out_top = out_top)
 	elif '-f' in args and '-t' in args and '-r' in args and '-l' not in args:
-		main(args[args.index('-f') + 1], args[args.index('-t') + 1], args[args.index('-r') + 1])
+		main(args[args.index('-f') + 1], args[args.index('-t') + 1], args[args.index('-r') + 1], stride = stride, sf = sf, out_traj = out_traj, out_top = out_top)
 	elif '-f' in args and '-t' in args and '-r' not in args and '-l' not in args:
-		main(args[args.index('-f') + 1], args[args.index('-t') + 1])
+		main(args[args.index('-f') + 1], args[args.index('-t') + 1], stride = stride, sf = sf, out_traj = out_traj, out_top = out_top)
 	elif '-h' not in args:
 		print('Missing parameters, try -h for flags\n')
 	else:
 		print('-f <trajectory file> (file format *.xtc, *trr)\n-t <topology file> (any file with topology)\n-r <reference traj file> (any topology file). If not supplied, \
-			the first frame of trajectory will be used for alignment\n -l <lipid type> (example: -l DPPC).')
+			the first frame of trajectory will be used for alignment\n -l <lipid type> (example: -l DPPC)\n -stride <positive integer; step of reading frames>\n \
+			 -sf <time in ps; number to determine from which frame to read the trajectory>\n -oc <output trajectory file>\n -oa <output topology file>\n')
 
