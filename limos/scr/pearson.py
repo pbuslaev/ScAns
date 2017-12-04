@@ -28,5 +28,9 @@ def main(filename_1, filename_2):
 
 if __name__ == '__main__':
  	args = sys.argv[1:]
- 	if '-f1' in args and '-f2' in args:
- 		main(args[args.index('-f1') + 1], args[args.index('-f2') + 1])
+ 	if '-cov1' in args and '-cov2' in args:
+ 		main(args[args.index('-cov1') + 1], args[args.index('-cov2') + 1])
+ 	elif '-h' not in args and '-help' not in args:
+ 		print('Missing parameters, try -h for flags\n')
+ 	else:
+ 		print('-cov1, -cov2 - 2 files with covariance matrices')

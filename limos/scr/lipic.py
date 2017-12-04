@@ -1,5 +1,6 @@
 import mdtraj as md
 import numpy as np
+import sys
 
 
 def lipic(traj_file, top_file, stride):
@@ -19,11 +20,25 @@ def lipic(traj_file, top_file, stride):
 	return new_traj
 
 
-def main(traj_file, top_file, stride = 10000):
+def main(traj_file, top_file, stride, mot_out):
 	traj = lipic(traj_file, top_file, stride)
-	traj.save_pdb('lipic.pdb')
+	traj.save_pdb(mot_out)
+	print('Motion saved in file "%s"' % mot_out)
 
 
 if __name__ == '__main__':
-	main('concatenated.xtc', 'average.pdb')
-
+	args = sys.argv[1:]
+	if '-stride' in args:
+		stride = int(args[args.index('-stride') + 1])
+	else:
+		stride = 10000
+	if '-om' in args:
+		mot_out = args[args.index('-om') + 1]
+	else:
+		mot_out = 'conform.pdb'
+	if '-f' in args and '-t' in args:
+		main(args[args.index('-f') + 1], args[args.index('-t') + 1], stride, mot_out)
+	elif '-h' not in args and '-help' not in args:
+		print('Missing parameters, try -h for flags\n')
+	else:
+		print('-f <trajectory file> (file format *.xtc)\n-t <topology file> (any file with topology)\n -stride <<positive integer; step of reading frames>\n -om <output file with conformations>')
